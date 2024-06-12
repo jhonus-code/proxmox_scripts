@@ -124,7 +124,7 @@ function pve_check() {
 }
 
 function arch_check() {
-  if [ "$(dpkg --print-architecture)" != "amd64"; then
+  if [ "$(dpkg --print-architecture)" != "amd64" ]; then
     msg_error "This script will not work with PiMox! \n"
     echo -e "Exiting..."
     sleep 2
@@ -333,12 +333,6 @@ start_script
 msg_info "Creating OPNsense VM"
 qm create $VMID -agent 1 -bios ovmf -cores $CORE_COUNT -memory $RAM_SIZE -name $HN -net0 virtio,bridge=$BRG,macaddr=$MAC$VLAN$MTU -ostype other -scsihw virtio-scsi-pci -sockets 1$MACHINE
 qm importdisk $VMID $ISO_UNCOMPRESSED $STORAGE -format raw
-
-# Debugging information before problematic command
-echo -e "${DGN}Debugging Information:${CL}"
-echo -e "VMID: ${BGN}$VMID${CL}"
-echo -e "STORAGE: ${BGN}$STORAGE${CL}"
-echo -e "FORMAT: ${BGN}$FORMAT${CL}"
 
 # Adjusting this part to ensure it works correctly
 qm set $VMID -efidisk0 $STORAGE:vm-${VMID}-disk-1,size=128K$FORMAT
