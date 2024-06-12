@@ -14,28 +14,28 @@ BRIDGE="vmbr0"
 
 # Download the OPNsense ISO
 echo "Downloading OPNsense ISO..."
-wget $ISO_URL -O $ISO_COMPRESSED
+wget -q "$ISO_URL" -O "$ISO_COMPRESSED"
 
 # Decompress the ISO
 echo "Decompressing the ISO..."
-bunzip2 $ISO_COMPRESSED
+bunzip2 -k "$ISO_COMPRESSED"
 
 # Check if the ISO exists
-if [ ! -f $ISO_UNCOMPRESSED ]; then
+if [ ! -f "$ISO_UNCOMPRESSED" ]; then
     echo "Failed to download and decompress the OPNsense ISO."
     exit 1
 fi
 
 # Create a new VM in Proxmox
 echo "Creating a new VM in Proxmox..."
-qm create $VM_ID --name $VM_NAME --memory $MEMORY --net0 virtio,bridge=$BRIDGE --bootdisk virtio0 --ostype l26
+qm create $VM_ID --name "$VM_NAME" --memory "$MEMORY" --net0 virtio,bridge="$BRIDGE" --bootdisk virtio0 --ostype l26
 
 # Import the OPNsense disk to the VM
 echo "Importing the OPNsense disk to the VM..."
-import_result=$(qm importdisk $VM_ID $ISO_UNCOMPRESSED $STORAGE 2>&1)
+import_result=$(qm importdisk $VM_ID "$ISO_UNCOMPRESSED" "$STORAGE" 2>&1)
 
 # Check if import was successful
-if [[ $import_result == *"Disk '$STORAGE:vm-$VM_ID-disk-0'"* ]]; then
+if [[ $import_result == *"successfully imported"* ]]; then
     echo "Disk imported successfully."
 else
     echo "Failed to import disk: $import_result"
@@ -44,13 +44,13 @@ fi
 
 # Configure the VM to use the imported disk
 echo "Configuring the VM..."
-qm set $VM_ID --scsihw virtio-scsi-pci --scsi0 $STORAGE:vm-$VM_ID-disk-0
-qm set $VM_ID --ide2 $STORAGE:local-$VM_ID-disk-1,format=qcow2
-qm set $VM_ID --ide2 $STORAGE:iso/OPNsense-${OPNSENSE_VERSION}-dvd-amd64.iso,media=cdrom
+qm set $VM_ID --scsihw virtio-scsi-pci --scsi0 "$STORAGE:vm-$VM_ID-disk-0"
+qm set $VM_ID --boot c --bootdisk scsi0
+qm set $VM_ID --ide2 "$STORAGE:iso/OPNsense-${OPNSENSE_VERSION}-dvd-amd64.iso,media=cdrom"
 
 # Resize the disk to the desired size
 echo "Resizing the disk to $DISK_SIZE..."
-qm resize $VM_ID scsi0 $DISK_SIZE
+qm resize $VM_ID scsi0 "$DISK_SIZE"
 
 # Start the VM
 echo "Starting the VM..."
