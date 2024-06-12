@@ -331,15 +331,15 @@ function start_script() {
 start_script
 
 msg_info "Creating OPNsense VM"
-qm create $VMID -agent 1 -bios ovmf -cores $CORE_COUNT -memory $RAM_SIZE -name $HN -net0 virtio,bridge=$BRG,macaddr=$MAC$VLAN$MTU -ostype other -scsihw virtio-scsi-pci -sockets 1$MACHINE
-qm importdisk $VMID $ISO_UNCOMPRESSED $STORAGE -format raw
+qm create "$VMID" -agent 1${MACHINE} -cores "$CORE_COUNT" -memory "$RAM_SIZE" -name "$VM_NAME" -net0 virtio,bridge="$BRG",macaddr="$MAC"$VLAN$MTU -onboot 1 -ostype l26 -scsihw virtio-scsi-pci -sockets 1
 
-# Adjusting this part to ensure it works correctly
-qm set $VMID -efidisk0 $STORAGE:vm-${VMID}-disk-1,size=128K$FORMAT
-qm set $VMID -scsi0 $STORAGE:vm-${VMID}-disk-0,import-from=$STORAGE:$ISO_UNCOMPRESSED$DISK_CACHE,ssd=1,discard=on,format=raw
-qm set $VMID -boot order=scsi0
-qm set $VMID -cdrom $STORAGE:$ISO_UNCOMPRESSED
-qm set $VMID -bootdisk scsi0
+qm set "$VMID" -efidisk0 "$STORAGE:vm-$VMID-disk-1,size=128K$FORMAT"
+qm importdisk "$VMID" "$ISO_UNCOMPRESSED" "$STORAGE" --format qcow2
+qm set "$VMID" -scsi0 "$STORAGE:vm-$VMID-disk-1$DISK_CACHE,format=qcow2"
+qm set "$VMID" -boot c -bootdisk scsi0
+qm set "$VMID" -serial0 socket
+qm set "$VMID" -vga qxl
+qm set "$VMID" -cdrom "$STORAGE:iso/OPNsense-${OPNSENSE_VERSION}-dvd-amd64.iso"
 
 msg_ok "Created OPNsense VM ${VMID}"
 
