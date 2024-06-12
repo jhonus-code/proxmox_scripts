@@ -45,7 +45,7 @@ fi
 # Configure the VM to use the imported disk
 echo "Configuring the VM..."
 qm set $VM_ID --scsihw virtio-scsi-pci --scsi0 $STORAGE:vm-$VM_ID-disk-0
-qm set $VM_ID --boot c --bootdisk scsi0
+qm set $VM_ID --ide2 $STORAGE:local-$VM_ID-disk-1,format=qcow2
 qm set $VM_ID --ide2 $STORAGE:iso/OPNsense-${OPNSENSE_VERSION}-dvd-amd64.iso,media=cdrom
 
 # Resize the disk to the desired size
