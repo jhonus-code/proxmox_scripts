@@ -31,6 +31,70 @@ MEMORY="512"
 DISK_SIZE="32G"
 BRIDGE="vmbr0"
 
+# Función para descargar el ISO
+function download_iso {
+    echo "Downloading OPNsense ISO..."
+    wget -q --show-progress "$ISO_URL" -O "$ISO_COMPRESSED"
+    
+    # Verificar si el archivo se descargó correctamente
+    if [ -f "$ISO_COMPRESSED" ]; then
+        echo "ISO downloaded successfully."
+    else
+        echo "Failed to download the ISO."
+        exit 1
+    fi
+}
+
+# Función para descomprimir el ISO
+function decompress_iso {
+    # Comprobar si el archivo ISO comprimido existe
+    if [ ! -f "$ISO_COMPRESSED" ]; then
+        echo "Compressed ISO file does not exist."
+        exit 1
+    fi
+    
+    # Comprobar la integridad del archivo comprimido
+    if bzip2 -tvv "$ISO_COMPRESSED"; then
+        echo "The compressed ISO file is valid."
+        
+        # Descomprimir el ISO
+        echo "Decompressing the ISO..."
+        bunzip2 -k "$ISO_COMPRESSED"
+        
+        # Verificar si la descompresión fue exitosa
+        if [ -f "$ISO_UNCOMPRESSED" ]; then
+            echo "ISO decompressed successfully."
+        else
+            echo "Failed to decompress the ISO."
+            exit 1
+        fi
+    else
+        echo "The compressed ISO file is corrupted."
+        
+        # Intentar recuperar el archivo comprimido
+        echo "Attempting to recover the compressed ISO file..."
+        bzip2recover "$ISO_COMPRESSED"
+        
+        # Reemplazar esta línea con el comando para renombrar los archivos recuperados si es necesario
+        # mv recovered* "$ISO_COMPRESSED"
+        
+        # Intentar descomprimir nuevamente
+        echo "Trying to decompress the ISO again..."
+        bunzip2 -k "$ISO_COMPRESSED"
+        
+        # Verificar si la descompresión fue exitosa
+        if [ -f "$ISO_UNCOMPRESSED" ]; then
+            echo "ISO decompressed successfully after recovery."
+        else
+            echo "Failed to decompress the ISO after recovery."
+            exit 1
+        fi
+    fi
+}
+
+download_iso
+decompress_iso
+
 # Variables adicionales para la creación del disco
 DISK_PATH="/var/lib/vz/images/$VM_ID/vm-$VM_ID-disk-0.raw"
 
@@ -52,24 +116,6 @@ if [ -f "$DISK_PATH" ]; then
     echo "Disk file created successfully."
 else
     echo "Failed to create the disk file."
-    exit 1
-fi
-
-# Download the OPNsense ISO
-echo "Downloading OPNsense ISO..."
-wget -q --show-progress "$ISO_URL" -O "$ISO_COMPRESSED"
-
-# Decompress the ISO if not already decompressed
-if [ -f "$ISO_UNCOMPRESSED" ]; then
-    echo "ISO already decompressed."
-else
-    echo "Decompressing the ISO..."
-    bunzip2 -k "$ISO_COMPRESSED"
-fi
-
-# Check if the ISO exists
-if [ ! -f "$ISO_UNCOMPRESSED" ]; then
-    echo "Failed to download and decompress the OPNsense ISO."
     exit 1
 fi
 
