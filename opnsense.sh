@@ -15,6 +15,13 @@ BRIDGE="vmbr0"
 # Variables adicionales para la creación del disco
 DISK_PATH="/var/lib/vz/images/$VM_ID/vm-$VM_ID-disk-0.raw"
 
+# Crear el directorio para el disco si no existe
+DISK_DIR=$(dirname "$DISK_PATH")
+if [ ! -d "$DISK_DIR" ]; then
+    echo "Creating the disk directory..."
+    mkdir -p "$DISK_DIR"
+fi
+
 # Crear el archivo de disco si no existe
 if [ ! -f "$DISK_PATH" ]; then
     echo "Creating the disk file..."
