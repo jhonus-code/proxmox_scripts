@@ -92,8 +92,41 @@ function decompress_iso {
     fi
 }
 
+function recover_and_decompress_iso {
+    # Intentar recuperar el archivo comprimido
+    echo "Attempting to recover the compressed ISO file..."
+    bzip2recover "$ISO_COMPRESSED"
+    
+    # Encuentra los archivos recuperados y los renombra
+    for recovered_file in recovered*; do
+        if [ -f "$recovered_file" ]; then
+            echo "Recovered file found: $recovered_file"
+            mv "$recovered_file" "${ISO_COMPRESSED}_recovered"
+            break
+        fi
+    done
+    
+    # Intentar descomprimir el archivo recuperado
+    if [ -f "${ISO_COMPRESSED}_recovered" ]; then
+        echo "Trying to decompress the recovered ISO file..."
+        bunzip2 -k "${ISO_COMPRESSED}_recovered"
+        
+        # Verificar si la descompresión fue exitosa
+        if [ -f "$ISO_UNCOMPRESSED" ]; then
+            echo "ISO decompressed successfully after recovery."
+        else
+            echo "Failed to decompress the ISO after recovery."
+            exit 1
+        fi
+    else
+        echo "No recovered files found."
+        exit 1
+    fi
+}
+
 download_iso
 decompress_iso
+recover_and_decompress_iso
 
 # Variables adicionales para la creación del disco
 DISK_PATH="/var/lib/vz/images/$VM_ID/vm-$VM_ID-disk-0.raw"
