@@ -44,20 +44,15 @@ fi
 
 # Create a new VM in Proxmox
 echo "Creating a new VM in Proxmox..."
-qm create $VM_ID --name "$VM_NAME" --memory "$MEMORY" --net0 virtio,bridge="$BRIDGE" --bootdisk scsi0 --ostype l26
+qm create $VM_ID --name "$VM_NAME" --memory "$MEMORY" --net0 virtio,bridge="$BRIDGE" --bootdisk sata0 --ostype l26
 
 # Import the OPNsense ISO to the VM
 echo "Importing the OPNsense ISO to the VM..."
 qm set $VM_ID --ide2 "$STORAGE:iso/OPNsense-${OPNSENSE_VERSION}-dvd-amd64.iso,media=cdrom"
 
-# Create and attach a new disk to the VM
-echo "Creating and attaching a new disk..."
-qm set $VM_ID --scsihw virtio-scsi-pci
-qm set $VM_ID --scsi0 "$STORAGE:$VM_ID/vm-$VM_ID-disk-0,size=$DISK_SIZE"
-
-# Resize the disk to the desired size (if required)
-echo "Resizing the disk to $DISK_SIZE..."
-qm resize $VM_ID scsi0 "$DISK_SIZE"
+# Create and attach a new SATA disk to the VM
+echo "Creating and attaching a new SATA disk..."
+qm set $VM_ID --sata0 "$STORAGE:$VM_ID/vm-$VM_ID-disk-0.raw,size=$DISK_SIZE"
 
 # Set boot order to prioritize the CD-ROM first
 echo "Setting boot order..."
