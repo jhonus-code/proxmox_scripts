@@ -1,5 +1,21 @@
 #!/bin/bash
+# Copyright (c) 2022-2024 jhonus
+# Author: jhonus (telegram)
+# License: MIT
+# https://github.com/magoblanco66/proxmox_scripts/raw/main/LICENSE
 
+function header_info {
+  clear
+  cat <<"EOF"
+    __  __                        ___              _      __              __     ____  _____
+   / / / /___  ____ ___  ___     /   |  __________(_)____/ /_____ _____  / /_   / __ \/ ___/
+  / /_/ / __ \/ __ `__ \/ _ \   / /| | / ___/ ___/ / ___/ __/ __ `/ __ \/ __/  / / / /\__ \
+ / __  / /_/ / / / / / /  __/  / ___ |(__  |__  ) (__  ) /_/ /_/ / / / / /_   / /_/ /___/ /
+/_/ /_/\____/_/ /_/ /_/\___/  /_/  |_/____/____/_/____/\__/\__,_/_/ /_/\__/   \____//____/
+
+EOF
+}
+header_info
 # Variables
 OPNSENSE_VERSION="24.1"
 ISO_URL="https://mirror.dns-root.de/opnsense/releases/${OPNSENSE_VERSION}/OPNsense-${OPNSENSE_VERSION}-dvd-amd64.iso.bz2"
