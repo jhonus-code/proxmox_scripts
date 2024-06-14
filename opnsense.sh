@@ -57,7 +57,7 @@ fi
 
 # Download the OPNsense ISO
 echo "Downloading OPNsense ISO..."
-wget -q "$ISO_URL" -O "$ISO_COMPRESSED"
+wget -q --show-progress "$ISO_URL" -O "$ISO_COMPRESSED"
 
 # Decompress the ISO if not already decompressed
 if [ -f "$ISO_UNCOMPRESSED" ]; then
