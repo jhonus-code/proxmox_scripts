@@ -12,13 +12,34 @@ MEMORY="512"
 DISK_SIZE="32G"
 BRIDGE="vmbr0"
 
+# Variables adicionales para la creación del disco
+DISK_PATH="/var/lib/vz/images/$VM_ID/vm-$VM_ID-disk-0.raw"
+
+# Crear el archivo de disco si no existe
+if [ ! -f "$DISK_PATH" ]; then
+    echo "Creating the disk file..."
+    qemu-img create -f raw "$DISK_PATH" "$DISK_SIZE"
+fi
+
+# Verificar la creación del archivo de disco
+if [ -f "$DISK_PATH" ]; then
+    echo "Disk file created successfully."
+else
+    echo "Failed to create the disk file."
+    exit 1
+fi
+
 # Download the OPNsense ISO
 echo "Downloading OPNsense ISO..."
 wget -q "$ISO_URL" -O "$ISO_COMPRESSED"
 
-# Decompress the ISO
-echo "Decompressing the ISO..."
-bunzip2 -k "$ISO_COMPRESSED"
+# Decompress the ISO if not already decompressed
+if [ -f "$ISO_UNCOMPRESSED" ]; then
+    echo "ISO already decompressed."
+else
+    echo "Decompressing the ISO..."
+    bunzip2 -k "$ISO_COMPRESSED"
+fi
 
 # Check if the ISO exists
 if [ ! -f "$ISO_UNCOMPRESSED" ]; then
@@ -28,35 +49,27 @@ fi
 
 # Create a new VM in Proxmox
 echo "Creating a new VM in Proxmox..."
-qm create $VM_ID --name "$VM_NAME" --memory "$MEMORY" --net0 virtio,bridge="$BRIDGE" --bootdisk virtio0 --ostype l26
-
-# Import the OPNsense disk to the VM
-echo "Importing the OPNsense disk to the VM..."
-import_result=$(qm importdisk $VM_ID "$ISO_UNCOMPRESSED" "$STORAGE" 2>&1)
-
-# Check if import was successful
-if [[ $import_result == *"successfully imported"* ]]; then
-    echo "Disk imported successfully."
-else
-    echo "Failed to import disk: $import_result"
-    exit 1
-fi
-
-# Create a new VM in Proxmox
-echo "Creating a new VM in Proxmox..."
-qm create $VM_ID --name "$VM_NAME" --memory "$MEMORY" --net0 virtio,bridge="$BRIDGE" --bootdisk sata0 --ostype l26
+qm create $VM_ID --name "$VM_NAME" --memory "$MEMORY" --net0 virtio,bridge="$BRIDGE" --ostype l26 --scsihw virtio-scsi-pci
 
 # Import the OPNsense ISO to the VM
 echo "Importing the OPNsense ISO to the VM..."
 qm set $VM_ID --ide2 "$STORAGE:iso/OPNsense-${OPNSENSE_VERSION}-dvd-amd64.iso,media=cdrom"
 
-# Create and attach a new SATA disk to the VM
-echo "Creating and attaching a new SATA disk..."
+# Adjuntar el disco a la VM
+echo "Attaching the disk to the VM..."
 qm set $VM_ID --sata0 "$STORAGE:$VM_ID/vm-$VM_ID-disk-0.raw,size=$DISK_SIZE"
+
+# Verify the disk creation and attachment
+if qm config $VM_ID | grep -q "sata0"; then
+    echo "SATA disk created and attached successfully."
+else
+    echo "Failed to create and attach SATA disk."
+    exit 1
+fi
 
 # Set boot order to prioritize the CD-ROM first
 echo "Setting boot order..."
-qm set $VM_ID --boot order=ide2
+qm set $VM_ID --boot order=ide2,sata0
 
 # Start the VM
 echo "Starting the VM..."
