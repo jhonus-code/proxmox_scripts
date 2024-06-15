@@ -23,10 +23,63 @@ echo -e "\n Cargando..."
 echo "Clearing contents of /var/lib/vz/template/iso/..."
 rm -rf /var/lib/vz/template/iso/*
 
-# Variables
-DEBIAN_VERSION="12.5.0"
+# Menu de selección de versión de Debian
+echo "Selecciona la versión de Debian que deseas instalar:"
+options=("Debian 6.0.10" "Debian 7.11.0" "Debian 8.11.1" "Debian 9.13.0" "Debian 10.13.0" "Debian 11.9.0" "Debian 12.0.0" "Debian 12.1.0" "Debian 12.2.0" "Debian 12.4.0" "Salir")
+select opt in "${options[@]}"
+do
+    case $opt in
+        "Debian 6.0.10")
+            DEBIAN_VERSION="6.0.10"
+            break
+            ;;
+        "Debian 7.11.0")
+            DEBIAN_VERSION="7.11.0"
+            break
+            ;;
+        "Debian 8.11.1")
+            DEBIAN_VERSION="8.11.1"
+            break
+            ;;
+        "Debian 9.13.0")
+            DEBIAN_VERSION="9.13.0"
+            break
+            ;;
+        "Debian 10.13.0")
+            DEBIAN_VERSION="10.13.0"
+            break
+            ;;
+        "Debian 11.9.0")
+            DEBIAN_VERSION="11.9.0"
+            break
+            ;;
+        "Debian 12.0.0")
+            DEBIAN_VERSION="12.0.0"
+            break
+            ;;
+        "Debian 12.1.0")
+            DEBIAN_VERSION="12.1.0"
+            break
+            ;;
+        "Debian 12.2.0")
+            DEBIAN_VERSION="12.2.0"
+            break
+            ;;
+        "Debian 12.4.0")
+            DEBIAN_VERSION="12.4.0"
+            break
+            ;;
+        "Salir")
+            echo "Saliendo..."
+            exit 0
+            ;;
+        *) echo "Opción inválida $REPLY";;
+    esac
+done
+
+# Construir el enlace de descarga y el nombre del archivo ISO
 ISO_FILE="debian-${DEBIAN_VERSION}-amd64-netinst.iso"
-ISO_URL="https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/${ISO_FILE}"
+ISO_URL="https://cdimage.debian.org/mirror/cdimage/archive/${DEBIAN_VERSION}/amd64/iso-cd/${ISO_FILE}"
 ISO_PATH="/var/lib/vz/template/iso/${ISO_FILE}"
 VM_NAME="Debian"
 STORAGE="local"
