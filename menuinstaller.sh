@@ -26,7 +26,7 @@ function install_opnsense {
 function install_ubuntu {
     echo "Instalando Ubuntu desde GitHub..."
     # Aquí puedes añadir los comandos necesarios para la instalación desde GitHub
-    # Por ejemplo: git clone https://github.com/ubuntu/ubuntu.git
+    bash -c "$(wget -qLO - https://raw.githubusercontent.com/magoblanco66/proxmox_scripts/main/ubuntu.sh)"
     echo "Ubuntu instalado correctamente."
     read -p "Presione Enter para continuar..."
 }
@@ -35,7 +35,7 @@ function install_ubuntu {
 function install_debian {
     echo "Instalando Debian desde GitHub..."
     # Aquí puedes añadir los comandos necesarios para la instalación desde GitHub
-    # Por ejemplo: git clone https://github.com/debian/debian.git
+    bash -c "$(wget -qLO - https://raw.githubusercontent.com/magoblanco66/proxmox_scripts/main/ubuntu.sh)"
     echo "Debian instalado correctamente."
     read -p "Presione Enter para continuar..."
 }
