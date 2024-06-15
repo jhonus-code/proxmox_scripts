@@ -29,12 +29,29 @@ PRIMARY_ISO_URL="https://mirror.dns-root.de/opnsense/releases/${OPNSENSE_VERSION
 BACKUP_ISO_URL="https://opnsense.c0urier.net/releases/${OPNSENSE_VERSION}/OPNsense-${OPNSENSE_VERSION}-dvd-amd64.iso.bz2"
 ISO_COMPRESSED="/var/lib/vz/template/iso/OPNsense-${OPNSENSE_VERSION}-dvd-amd64.iso.bz2"
 ISO_UNCOMPRESSED="/var/lib/vz/template/iso/OPNsense-${OPNSENSE_VERSION}-dvd-amd64.iso"
-VM_ID="108"
 VM_NAME="OPNsense"
 STORAGE="local"
 MEMORY="512"
 DISK_SIZE="32G"
 BRIDGE="vmbr0"
+
+# Function to get the next available VM ID
+get_next_vm_id() {
+    local last_id=99  # Establecer el número base para la búsqueda
+    for dir in /var/lib/vz/images/*/; do
+        dir=${dir%/}  # Eliminar la barra al final
+        vm_id=${dir##*/}  # Obtener el número de VM del directorio
+        if [[ $vm_id =~ ^[0-9]+$ ]]; then
+            if [ $vm_id -gt $last_id ]; then
+                last_id=$vm_id
+            fi
+        fi
+    done
+    echo $((last_id + 1))  # Devolver el próximo número disponible
+}
+
+# Determine the next available VM ID
+VM_ID=$(get_next_vm_id)
 
 # Function to download the ISO
 download_iso() {
