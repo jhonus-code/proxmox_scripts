@@ -19,9 +19,14 @@ EOF
 header_info
 echo -e "\n Cargando..."
 
+# Clear the contents of the ISO directory
+echo "Clearing contents of /var/lib/vz/template/iso/..."
+rm -rf /var/lib/vz/template/iso/*
+
 # Variables
 OPNSENSE_VERSION="24.1"
-ISO_URL="https://mirror.dns-root.de/opnsense/releases/${OPNSENSE_VERSION}/OPNsense-${OPNSENSE_VERSION}-dvd-amd64.iso.bz2"
+PRIMARY_ISO_URL="https://mirror.dns-root.de/opnsense/releases/${OPNSENSE_VERSION}/OPNsense-${OPNSENSE_VERSION}-dvd-amd64.iso.bz2"
+BACKUP_ISO_URL="https://opnsense.c0urier.net/releases/${OPNSENSE_VERSION}/OPNsense-${OPNSENSE_VERSION}-dvd-amd64.iso.bz2"
 ISO_COMPRESSED="/var/lib/vz/template/iso/OPNsense-${OPNSENSE_VERSION}-dvd-amd64.iso.bz2"
 ISO_UNCOMPRESSED="/var/lib/vz/template/iso/OPNsense-${OPNSENSE_VERSION}-dvd-amd64.iso"
 VM_ID="108"
@@ -31,18 +36,58 @@ MEMORY="512"
 DISK_SIZE="32G"
 BRIDGE="vmbr0"
 
-# Descargar la imagen ISO de OPNsense si no existe
+# Function to download the ISO
+download_iso() {
+    local url=$1
+    echo "Attempting to download OPNsense ISO from $url..."
+    wget $url -O $ISO_COMPRESSED
+    return $?
+}
+
+# Download the ISO if it doesn't exist
 if [ ! -f $ISO_COMPRESSED ]; then
-    echo "Descargando OPNsense ISO..."
-    wget $ISO_URL -O $ISO_COMPRESSED
+    download_iso $PRIMARY_ISO_URL
+    if [ $? -ne 0 ]; then
+        echo "Primary URL failed. Attempting to download from backup URL..."
+        download_iso $BACKUP_ISO_URL
+        if [ $? -ne 0 ]; then
+            echo "Failed to download the ISO from both primary and backup URLs. Verify the URLs or the internet connection."
+            exit 1
+        fi
+    fi
 else
     echo "El archivo comprimido ya existe. No se descargará nuevamente."
+fi
+
+# Verify the ISO integrity
+echo "Verificando la integridad del archivo ISO..."
+bunzip2 -t $ISO_COMPRESSED
+if [ $? -ne 0 ]; then
+    echo "El archivo ISO está corrupto o incompleto. Volviendo a descargar..."
+    rm -f $ISO_COMPRESSED
+    download_iso $PRIMARY_ISO_URL
+    if [ $? -ne 0 ]; then
+        download_iso $BACKUP_ISO_URL
+        if [ $? -ne 0 ]; then
+            echo "La descarga del archivo ISO falló nuevamente. Abortando."
+            exit 1
+        fi
+    fi
+    bunzip2 -t $ISO_COMPRESSED
+    if [ $? -ne 0 ]; then
+        echo "La verificación del archivo ISO falló nuevamente. Abortando."
+        exit 1
+    fi
 fi
 
 # Descomprimir la imagen ISO si no está descomprimida
 if [ -f $ISO_COMPRESSED ] && [ ! -f $ISO_UNCOMPRESSED ]; then
     echo "Descomprimiendo el ISO..."
     bunzip2 $ISO_COMPRESSED
+    if [ $? -ne 0 ]; then
+        echo "Fallo al descomprimir el archivo ISO."
+        exit 1
+    fi
 else
     echo "El archivo ISO descomprimido ya existe o no se encontró el archivo comprimido."
 fi
