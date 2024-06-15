@@ -24,7 +24,7 @@ echo "Clearing contents of /var/lib/vz/template/iso/..."
 rm -rf /var/lib/vz/template/iso/*
 
 # Variables
-DEBIAN_VERSION="10.11.0"
+DEBIAN_VERSION="12.5.0"
 ISO_FILE="debian-${DEBIAN_VERSION}-amd64-netinst.iso"
 ISO_URL="https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/${ISO_FILE}"
 ISO_PATH="/var/lib/vz/template/iso/${ISO_FILE}"
