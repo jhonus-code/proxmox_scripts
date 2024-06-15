@@ -31,117 +31,42 @@ MEMORY="512"
 DISK_SIZE="32G"
 BRIDGE="vmbr0"
 
-# Función para descargar el ISO
-function download_iso {
-    echo "Downloading OPNsense ISO..."
-    wget -q --show-progress "$ISO_URL" -O "$ISO_COMPRESSED"
-    
-    # Verificar si el archivo se descargó correctamente
-    if [ -f "$ISO_COMPRESSED" ]; then
-        echo "ISO downloaded successfully."
-    else
-        echo "Failed to download the ISO."
-        exit 1
-    fi
-}
+# Descargar la imagen ISO de OPNsense si no existe
+if [ ! -f $ISO_COMPRESSED ]; then
+    echo "Descargando OPNsense ISO..."
+    wget $ISO_URL -O $ISO_COMPRESSED
+else
+    echo "El archivo comprimido ya existe. No se descargará nuevamente."
+fi
 
-# Función para descomprimir el ISO
-function decompress_iso {
-    # Comprobar si el archivo ISO comprimido existe
-    if [ ! -f "$ISO_COMPRESSED" ]; then
-        echo "Compressed ISO file does not exist."
-        exit 1
-    fi
-    
-    # Comprobar la integridad del archivo comprimido
-    if bzip2 -tvv "$ISO_COMPRESSED"; then
-        echo "The compressed ISO file is valid."
-        
-        # Descomprimir el ISO
-        echo "Decompressing the ISO..."
-        bunzip2 -k "$ISO_COMPRESSED"
-        
-        # Verificar si la descompresión fue exitosa
-        if [ -f "$ISO_UNCOMPRESSED" ]; then
-            echo "ISO decompressed successfully."
-        else
-            echo "Failed to decompress the ISO."
-            exit 1
-        fi
-    else
-        echo "The compressed ISO file is corrupted."
-        
-        # Intentar recuperar el archivo comprimido
-        echo "Attempting to recover the compressed ISO file..."
-        bzip2recover "$ISO_COMPRESSED"
-        
-        # Reemplazar esta línea con el comando para renombrar los archivos recuperados si es necesario
-        # mv recovered* "$ISO_COMPRESSED"
-        
-        # Intentar descomprimir nuevamente
-        echo "Trying to decompress the ISO again..."
-        bunzip2 -k "$ISO_COMPRESSED"
-        
-        # Verificar si la descompresión fue exitosa
-        if [ -f "$ISO_UNCOMPRESSED" ]; then
-            echo "ISO decompressed successfully after recovery."
-        else
-            echo "Failed to decompress the ISO after recovery."
-            exit 1
-        fi
-    fi
-}
+# Descomprimir la imagen ISO si no está descomprimida
+if [ -f $ISO_COMPRESSED ] && [ ! -f $ISO_UNCOMPRESSED ]; then
+    echo "Descomprimiendo el ISO..."
+    bunzip2 $ISO_COMPRESSED
+else
+    echo "El archivo ISO descomprimido ya existe o no se encontró el archivo comprimido."
+fi
 
-function recover_and_decompress_iso {
-    # Intentar recuperar el archivo comprimido
-    echo "Attempting to recover the compressed ISO file..."
-    bzip2recover "$ISO_COMPRESSED"
-    
-    # Encuentra los archivos recuperados y los renombra
-    for recovered_file in recovered*; do
-        if [ -f "$recovered_file" ]; then
-            echo "Recovered file found: $recovered_file"
-            mv "$recovered_file" "${ISO_COMPRESSED}_recovered"
-            break
-        fi
-    done
-    
-    # Intentar descomprimir el archivo recuperado
-    if [ -f "${ISO_COMPRESSED}_recovered" ]; then
-        echo "Trying to decompress the recovered ISO file..."
-        bunzip2 -k "${ISO_COMPRESSED}_recovered"
-        
-        # Verificar si la descompresión fue exitosa
-        if [ -f "$ISO_UNCOMPRESSED" ]; then
-            echo "ISO decompressed successfully after recovery."
-        else
-            echo "Failed to decompress the ISO after recovery."
-            exit 1
-        fi
-    else
-        echo "No recovered files found."
-        exit 1
-    fi
-}
-
-download_iso
-decompress_iso
-recover_and_decompress_iso
+# Verificar que la ISO descomprimida existe
+if [ ! -f $ISO_UNCOMPRESSED ]; then
+    echo "No se pudo descargar y descomprimir el ISO de OPNsense."
+    exit 1
+fi
 
 # Variables adicionales para la creación del disco
 DISK_PATH="/var/lib/vz/images/$VM_ID/vm-$VM_ID-disk-0.raw"
 
-# Crear el directorio para el disco si no existe
-DISK_DIR=$(dirname "$DISK_PATH")
-if [ ! -d "$DISK_DIR" ]; then
-    echo "Creating the disk directory..."
-    mkdir -p "$DISK_DIR"
+# Crear el directorio de la VM si no existe
+if [ ! -d "/var/lib/vz/images/$VM_ID" ]; then
+    mkdir -p "/var/lib/vz/images/$VM_ID"
 fi
 
 # Crear el archivo de disco si no existe
 if [ ! -f "$DISK_PATH" ]; then
     echo "Creating the disk file..."
     qemu-img create -f raw "$DISK_PATH" "$DISK_SIZE"
+else
+    echo "El archivo de disco ya existe."
 fi
 
 # Verificar la creación del archivo de disco
@@ -152,19 +77,15 @@ else
     exit 1
 fi
 
-# Create a new VM in Proxmox
+# Crear una nueva VM en Proxmox
 echo "Creating a new VM in Proxmox..."
 qm create $VM_ID --name "$VM_NAME" --memory "$MEMORY" --net0 virtio,bridge="$BRIDGE" --ostype l26 --scsihw virtio-scsi-pci
-
-# Import the OPNsense ISO to the VM
-echo "Importing the OPNsense ISO to the VM..."
-qm set $VM_ID --ide2 "$STORAGE:iso/OPNsense-${OPNSENSE_VERSION}-dvd-amd64.iso,media=cdrom"
 
 # Adjuntar el disco a la VM
 echo "Attaching the disk to the VM..."
 qm set $VM_ID --sata0 "$STORAGE:$VM_ID/vm-$VM_ID-disk-0.raw,size=$DISK_SIZE"
 
-# Verify the disk creation and attachment
+# Verificar la creación y adjunto del disco
 if qm config $VM_ID | grep -q "sata0"; then
     echo "SATA disk created and attached successfully."
 else
@@ -172,12 +93,16 @@ else
     exit 1
 fi
 
-# Set boot order to prioritize the CD-ROM first
-echo "Setting boot order..."
-qm set $VM_ID --boot order=ide2,sata0
+# Set the CD-ROM
+echo "Setting the CD-ROM..."
+qm set $VM_ID --ide2 "$STORAGE:iso/OPNsense-${OPNSENSE_VERSION}-dvd-amd64.iso,media=cdrom"
 
-# Start the VM
-echo "Starting the VM..."
+# Establecer el orden de arranque para priorizar el CD-ROM primero
+echo "Setting boot order..."
+qm set $VM_ID --boot order=ide2
+
+# Iniciar la VM
+echo "Iniciando la VM..."
 qm start $VM_ID
 
-echo "OPNsense VM created and started successfully."
+echo "OPNsense VM creado e iniciado exitosamente."
