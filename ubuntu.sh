@@ -26,9 +26,51 @@ echo "Clearing contents of /var/lib/vz/template/iso/..."
 rm -rf /var/lib/vz/template/iso/*
 
 # Variables
-UBUNTU_VERSION="20.04.6"
-ISO_FILE="ubuntu-${UBUNTU_VERSION}-live-server-amd64.iso"
-ISO_URL="http://releases.ubuntu.com/${UBUNTU_VERSION}/${ISO_FILE}"
+# Menu de selección de versión de Ubuntu
+echo "Selecciona la versión de Ubuntu que deseas instalar:"
+options=("Ubuntu 18.04.6" "Ubuntu 20.04.6" "Ubuntu 22.04.2" "Ubuntu 22.10" "Ubuntu 23.04" "Salir")
+select opt in "${options[@]}"
+do
+    case $opt in
+        "Ubuntu 18.04.6")
+            UBUNTU_VERSION="18.04.6"
+            ISO_FILE="ubuntu-${UBUNTU_VERSION}-live-server-amd64.iso"
+            ISO_URL="https://releases.ubuntu.com/${UBUNTU_VERSION}/${ISO_FILE}"
+            break
+            ;;
+        "Ubuntu 20.04.6")
+            UBUNTU_VERSION="20.04.6"
+            ISO_FILE="ubuntu-${UBUNTU_VERSION}-live-server-amd64.iso"
+            ISO_URL="https://releases.ubuntu.com/${UBUNTU_VERSION}/${ISO_FILE}"
+            break
+            ;;
+        "Ubuntu 22.04.2")
+            UBUNTU_VERSION="22.04.2"
+            ISO_FILE="ubuntu-${UBUNTU_VERSION}-live-server-amd64.iso"
+            ISO_URL="https://releases.ubuntu.com/${UBUNTU_VERSION}/${ISO_FILE}"
+            break
+            ;;
+        "Ubuntu 22.10")
+            UBUNTU_VERSION="22.10"
+            ISO_FILE="ubuntu-${UBUNTU_VERSION}-live-server-amd64.iso"
+            ISO_URL="https://releases.ubuntu.com/${UBUNTU_VERSION}/${ISO_FILE}"
+            break
+            ;;
+        "Ubuntu 23.04")
+            UBUNTU_VERSION="23.04"
+            ISO_FILE="ubuntu-${UBUNTU_VERSION}-live-server-amd64.iso"
+            ISO_URL="https://releases.ubuntu.com/${UBUNTU_VERSION}/${ISO_FILE}"
+            break
+            ;;
+        "Salir")
+            echo "Saliendo..."
+            exit 0
+            ;;
+        *) echo "Opción inválida $REPLY";;
+    esac
+done
+
+# Variables generales
 ISO_PATH="/var/lib/vz/template/iso/${ISO_FILE}"
 VM_NAME="Ubuntu"
 STORAGE="local"
