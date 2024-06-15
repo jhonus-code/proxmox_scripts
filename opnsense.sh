@@ -23,12 +23,57 @@ echo -e "\n Cargando..."
 echo "Clearing contents of /var/lib/vz/template/iso/..."
 rm -rf /var/lib/vz/template/iso/*
 
-# Variables
-OPNSENSE_VERSION="24.1"
-PRIMARY_ISO_URL="https://mirror.dns-root.de/opnsense/releases/${OPNSENSE_VERSION}/OPNsense-${OPNSENSE_VERSION}-dvd-amd64.iso.bz2"
-BACKUP_ISO_URL="https://opnsense.c0urier.net/releases/${OPNSENSE_VERSION}/OPNsense-${OPNSENSE_VERSION}-dvd-amd64.iso.bz2"
+# Menu de selección de versión de OPNsense
+echo "Selecciona la versión de OPNsense que deseas instalar:"
+options=("OPNsense 21.1" "OPNsense 21.7" "OPNsense 22.1" "OPNsense 22.7" "OPNsense 23.1" "OPNsense 23.7" "OPNsense 24.1" "OPNsense 24.7" "Salir")
+select opt in "${options[@]}"
+do
+    case $opt in
+        "OPNsense 21.1")
+            OPNSENSE_VERSION="21.1"
+            break
+            ;;
+        "OPNsense 21.7")
+            OPNSENSE_VERSION="21.7"
+            break
+            ;;
+        "OPNsense 22.1")
+            OPNSENSE_VERSION="22.1"
+            break
+            ;;
+        "OPNsense 22.7")
+            OPNSENSE_VERSION="22.7"
+            break
+            ;;
+        "OPNsense 23.1")
+            OPNSENSE_VERSION="23.1"
+            break
+            ;;
+        "OPNsense 23.7")
+            OPNSENSE_VERSION="23.7"
+            break
+            ;;
+        "OPNsense 24.1")
+            OPNSENSE_VERSION="24.1"
+            break
+            ;;
+        "OPNsense 24.7")
+            OPNSENSE_VERSION="24.7"
+            break
+            ;;
+        "Salir")
+            echo "Saliendo..."
+            exit 0
+            ;;
+        *) echo "Opción inválida $REPLY";;
+    esac
+done
+
+# Construir el enlace de descarga y el nombre del archivo ISO
 ISO_COMPRESSED="/var/lib/vz/template/iso/OPNsense-${OPNSENSE_VERSION}-dvd-amd64.iso.bz2"
 ISO_UNCOMPRESSED="/var/lib/vz/template/iso/OPNsense-${OPNSENSE_VERSION}-dvd-amd64.iso"
+PRIMARY_ISO_URL="https://opnsense.c0urier.net/releases/${OPNSENSE_VERSION}/OPNsense-${OPNSENSE_VERSION}-OpenSSL-dvd-amd64.iso.bz2"
+
 VM_NAME="OPNsense"
 STORAGE="local"
 MEMORY="512"
