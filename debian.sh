@@ -28,12 +28,29 @@ DEBIAN_VERSION="12.5.0"
 ISO_FILE="debian-${DEBIAN_VERSION}-amd64-netinst.iso"
 ISO_URL="https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/${ISO_FILE}"
 ISO_PATH="/var/lib/vz/template/iso/${ISO_FILE}"
-VM_ID="108"
 VM_NAME="Debian"
 STORAGE="local"
 MEMORY="1024"  # Ajusta según los requisitos de tu VM
 DISK_SIZE="50G"  # Ajusta según los requisitos de tu VM
 BRIDGE="vmbr0"
+
+# Function to get the next available VM ID
+get_next_vm_id() {
+    local last_id=99  # Establecer el número base para la búsqueda
+    for dir in /var/lib/vz/images/*/; do
+        dir=${dir%/}  # Eliminar la barra al final
+        vm_id=${dir##*/}  # Obtener el número de VM del directorio
+        if [[ $vm_id =~ ^[0-9]+$ ]]; then
+            if [ $vm_id -gt $last_id ]; then
+                last_id=$vm_id
+            fi
+        fi
+    done
+    echo $((last_id + 1))  # Devolver el próximo número disponible
+}
+
+# Determine the next available VM ID
+VM_ID=$(get_next_vm_id)
 
 # Function to download the ISO
 download_iso() {
