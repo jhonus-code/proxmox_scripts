@@ -35,7 +35,7 @@ function install_ubuntu {
 function install_debian {
     echo "Instalando Debian desde GitHub..."
     # Aquí puedes añadir los comandos necesarios para la instalación desde GitHub
-    bash -c "$(wget -qLO - https://raw.githubusercontent.com/magoblanco66/proxmox_scripts/main/ubuntu.sh)"
+    bash -c "$(wget -qLO - https://raw.githubusercontent.com/magoblanco66/proxmox_scripts/main/debian.sh)"
     echo "Debian instalado correctamente."
     read -p "Presione Enter para continuar..."
 }
