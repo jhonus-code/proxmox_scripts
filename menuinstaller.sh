@@ -9,7 +9,8 @@ function show_menu {
     echo "2. Ubuntu"
     echo "3. Debian"
     echo "4. Windows Server"
-    echo "5. Salir"
+    echo "5. HirenCD"
+    echo "6. Salir"
     echo
 }
 
@@ -49,6 +50,15 @@ function install_windows_server {
     read -p "Presione Enter para continuar..."
 }
 
+# Función para manejar la instalación de HirenCD
+function hirencd {
+    echo "Instalando Debian desde GitHub..."
+    # Aquí puedes añadir los comandos necesarios para la instalación desde GitHub
+    bash -c "$(wget -qLO - https://raw.githubusercontent.com/magoblanco66/proxmox_scripts/main/hirencd.sh)"
+    echo "Debian instalado correctamente."
+    read -p "Presione Enter para continuar..."
+}
+
 
 # Bucle principal del script
 while true; do
@@ -68,11 +78,14 @@ while true; do
             install_windows_server
             ;;
         5)
+            install_windows_server
+            ;;
+        6)
             echo "Saliendo..."
             exit 0
             ;;
         *)
-            echo "Opción inválida. Por favor, ingrese un número del 1 al 5."
+            echo "Opción inválida. Por favor, ingrese un número del 1 al 6."
             read -p "Presione Enter para continuar..."
             ;;
     esac
