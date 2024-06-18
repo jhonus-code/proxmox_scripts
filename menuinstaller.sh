@@ -44,7 +44,7 @@ function install_debian {
 function install_windows_server {
     echo "Instalando Debian desde GitHub..."
     # Aquí puedes añadir los comandos necesarios para la instalación desde GitHub
-    bash -c "$(wget -qLO - https://raw.githubusercontent.com/magoblanco66/proxmox_scripts/main/windowsserver.sh)"
+    bash -c "$(wget -qLO - https://raw.githubusercontent.com/magoblanco66/proxmox_scripts/main/windows_server.sh)"
     echo "Debian instalado correctamente."
     read -p "Presione Enter para continuar..."
 }
