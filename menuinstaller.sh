@@ -8,7 +8,8 @@ function show_menu {
     echo "1. OPNsense"
     echo "2. Ubuntu"
     echo "3. Debian"
-    echo "4. Salir"
+    echo "4. Windows Server"
+    echo "5. Salir"
     echo
 }
 
@@ -39,6 +40,15 @@ function install_debian {
     read -p "Presione Enter para continuar..."
 }
 
+# Función para manejar la instalación de WindowsServer
+function install_windows_server {
+    echo "Instalando Debian desde GitHub..."
+    # Aquí puedes añadir los comandos necesarios para la instalación desde GitHub
+    bash -c "$(wget -qLO - https://raw.githubusercontent.com/magoblanco66/proxmox_scripts/main/windowsserver.sh)"
+    echo "Debian instalado correctamente."
+    read -p "Presione Enter para continuar..."
+}
+
 
 # Bucle principal del script
 while true; do
@@ -55,6 +65,9 @@ while true; do
             install_debian
             ;;
         4)
+            install_windows_server
+            ;;
+        5)
             echo "Saliendo..."
             exit 0
             ;;
