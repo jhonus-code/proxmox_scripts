@@ -57,7 +57,7 @@ VM_NAME="Server"
 STORAGE="local"
 MEMORY="4096"  # Ajusta según los requisitos de tu VM
 DISK_SIZE="60G"  # Ajusta según los requisitos de tu VM
-BRIDGE="vmbr2"
+BRIDGE="vmbr0"
 
 # Function to get the next available VM ID
 get_next_vm_id() {
