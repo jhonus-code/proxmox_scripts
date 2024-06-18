@@ -8,8 +8,7 @@ function show_menu {
     echo "1. OPNsense"
     echo "2. Ubuntu"
     echo "3. Debian"
-    echo "4. Zabbix"
-    echo "5. Salir"
+    echo "4. Salir"
     echo
 }
 
@@ -40,14 +39,6 @@ function install_debian {
     read -p "Presione Enter para continuar..."
 }
 
-# Función para manejar la instalación de Zabbix
-function install_zabbix {
-    echo "Instalando Zabbix desde GitHub..."
-    # Aquí puedes añadir los comandos necesarios para la instalación desde GitHub
-    # Por ejemplo: git clone https://github.com/zabbix/zabbix.git
-    echo "Zabbix instalado correctamente."
-    read -p "Presione Enter para continuar..."
-}
 
 # Bucle principal del script
 while true; do
@@ -64,9 +55,6 @@ while true; do
             install_debian
             ;;
         4)
-            install_zabbix
-            ;;
-        5)
             echo "Saliendo..."
             exit 0
             ;;
