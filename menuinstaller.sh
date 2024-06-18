@@ -47,7 +47,7 @@ function install_windows_server {
     echo "Instalando Debian desde GitHub..."
     # Aquí puedes añadir los comandos necesarios para la instalación desde GitHub
     bash -c "$(wget -qLO - https://raw.githubusercontent.com/magoblanco66/proxmox_scripts/main/windows_server.sh)"
-    echo "Debian instalado correctamente."
+    echo "Windows Server instalado correctamente."
     read -p "Presione Enter para continuar..."
 }
 
@@ -56,15 +56,16 @@ function hirencd {
     echo "Instalando Debian desde GitHub..."
     # Aquí puedes añadir los comandos necesarios para la instalación desde GitHub
     bash -c "$(wget -qLO - https://raw.githubusercontent.com/magoblanco66/proxmox_scripts/main/hirencd.sh)"
-    echo "Debian instalado correctamente."
+    echo "HironCD Añadido correctamente."
     read -p "Presione Enter para continuar..."
 }
 
 # Función para manejar la instalación de Borrado Isos Proxmox
 function borrado_carpeta_isos {
-    echo "Borrada correctamente instalado correctamente."
+    echo "Borrando contenido carpeta isos de Proxmox..."
     # Aquí puedes añadir los comandos necesarios de la sección
     rm -rf /var/lib/vz/template/iso/*
+    echo "Borrada carpeta Isos de Proxmox correctamente."
     read -p "Presione Enter para continuar..."
 }
 
