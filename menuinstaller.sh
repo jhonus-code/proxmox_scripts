@@ -62,13 +62,11 @@ function hirencd {
 
 # Función para manejar la instalación de Borrado Isos Proxmox
 function borrado_carpeta_isos {
-    echo "Instalando Debian desde GitHub..."
-    # Aquí puedes añadir los comandos necesarios para la instalación desde GitHub
     echo "Borrada correctamente instalado correctamente."
+    # Aquí puedes añadir los comandos necesarios de la sección
     rm -rf /var/lib/vz/template/iso/*
     read -p "Presione Enter para continuar..."
 }
-
 
 # Bucle principal del script
 while true; do
