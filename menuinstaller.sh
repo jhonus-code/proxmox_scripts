@@ -78,7 +78,7 @@ while true; do
             install_windows_server
             ;;
         5)
-            install_windows_server
+            hirencd
             ;;
         6)
             echo "Saliendo..."
