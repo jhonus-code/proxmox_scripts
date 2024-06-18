@@ -10,7 +10,8 @@ function show_menu {
     echo "3. Debian"
     echo "4. Windows Server"
     echo "5. HirenCD"
-    echo "6. Salir"
+    echo "6. Borrar Contenido Carpeta Isos"
+    echo "7. Salir"
     echo
 }
 
@@ -59,6 +60,15 @@ function hirencd {
     read -p "Presione Enter para continuar..."
 }
 
+# Función para manejar la instalación de Borrado Isos Proxmox
+function borrado_carpeta_isos {
+    echo "Instalando Debian desde GitHub..."
+    # Aquí puedes añadir los comandos necesarios para la instalación desde GitHub
+    echo "Borrada correctamente instalado correctamente."
+    rm -rf /var/lib/vz/template/iso/*
+    read -p "Presione Enter para continuar..."
+}
+
 
 # Bucle principal del script
 while true; do
@@ -81,11 +91,14 @@ while true; do
             hirencd
             ;;
         6)
+            borrado_carpeta_isos
+            ;;
+        7)
             echo "Saliendo..."
             exit 0
             ;;
         *)
-            echo "Opción inválida. Por favor, ingrese un número del 1 al 6."
+            echo "Opción inválida. Por favor, ingrese un número del 1 al 7."
             read -p "Presione Enter para continuar..."
             ;;
     esac
