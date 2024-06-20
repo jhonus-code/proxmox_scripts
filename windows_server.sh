@@ -131,14 +131,14 @@ fi
 
 # Create a new VM in Proxmox
 echo "Creating a new VM in Proxmox..."
-qm create $VM_ID --name "$VM_NAME" --memory "$MEMORY" --net0 virtio,bridge="$BRIDGE" --ostype win10 --scsihw virtio-scsi-pci
+qm create $VM_ID --name "$VM_NAME" --memory "$MEMORY" --net0 e1000,bridge="$BRIDGE" --ostype win10 --scsihw virtio-scsi-pci
 
 # Attach the disk to the VM
 echo "Attaching the disk to the VM..."
-qm set $VM_ID --scsi0 "$STORAGE:$VM_ID/vm-$VM_ID-disk-0.raw,size=$DISK_SIZE"
+qm set $VM_ID --sata0 "$STORAGE:$VM_ID/vm-$VM_ID-disk-0.raw,size=$DISK_SIZE"
 
 # Verify the creation and attachment of the disk
-if qm config $VM_ID | grep -q "scsi0"; then
+if qm config $VM_ID | grep -q "sata0"; then
     echo "Disk attached successfully."
 else
     echo "Failed to attach the disk."
