@@ -65,7 +65,7 @@ function hirencd {
 function truenas {
     echo "Instalando TrueNAS desde GitHub..."
     # Aquí puedes añadir los comandos necesarios para la instalación desde GitHub
-    bash -c "$(wget -qLO - https://raw.githubusercontent.com/magoblanco66/proxmox_scripts/main/hirencd.sh)"
+    bash -c "$(wget -qLO - https://raw.githubusercontent.com/magoblanco66/proxmox_scripts/main/truenas.sh)"
     echo "TrueNAS Añadido correctamente."
     read -p "Presione Enter para continuar..."
 }
