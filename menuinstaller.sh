@@ -10,8 +10,9 @@ function show_menu {
     echo "3. Debian"
     echo "4. Windows Server"
     echo "5. HirenCD"
-    echo "6. Borrar Contenido Carpeta Isos"
-    echo "7. Salir"
+    echo "6. TrueNAS"
+    echo "7. Borrar Contenido Carpeta Isos"
+    echo "8. Salir"
     echo
 }
 
@@ -44,7 +45,7 @@ function install_debian {
 
 # Función para manejar la instalación de WindowsServer
 function install_windows_server {
-    echo "Instalando Debian desde GitHub..."
+    echo "Instalando Windows Server desde GitHub..."
     # Aquí puedes añadir los comandos necesarios para la instalación desde GitHub
     bash -c "$(wget -qLO - https://raw.githubusercontent.com/magoblanco66/proxmox_scripts/main/windows_server.sh)"
     echo "Windows Server instalado correctamente."
@@ -53,10 +54,19 @@ function install_windows_server {
 
 # Función para manejar la instalación de HirenCD
 function hirencd {
-    echo "Instalando Debian desde GitHub..."
+    echo "Instalando HirenCD desde GitHub..."
     # Aquí puedes añadir los comandos necesarios para la instalación desde GitHub
     bash -c "$(wget -qLO - https://raw.githubusercontent.com/magoblanco66/proxmox_scripts/main/hirencd.sh)"
     echo "HironCD Añadido correctamente."
+    read -p "Presione Enter para continuar..."
+}
+
+# Función para manejar la instalación de TrueNAS
+function truenas {
+    echo "Instalando TrueNAS desde GitHub..."
+    # Aquí puedes añadir los comandos necesarios para la instalación desde GitHub
+    bash -c "$(wget -qLO - https://raw.githubusercontent.com/magoblanco66/proxmox_scripts/main/hirencd.sh)"
+    echo "TrueNAS Añadido correctamente."
     read -p "Presione Enter para continuar..."
 }
 
@@ -90,9 +100,12 @@ while true; do
             hirencd
             ;;
         6)
-            borrado_carpeta_isos
+            truenas
             ;;
         7)
+            borrado_carpeta_isos
+            ;;
+        8)
             echo "Saliendo..."
             exit 0
             ;;
