@@ -57,7 +57,7 @@ done
 ISO_PATH="/var/lib/vz/template/iso/${ISO_FILE}"
 VM_NAME="${OS_NAME//./-}"  # Reemplazar puntos con guiones para nombres válidos
 STORAGE="local"
-MEMORY="1024"  # Ajusta según los requisitos de tu VM
+MEMORY="8192"  # Ajusta según los requisitos de tu VM
 DISK_SIZE="50G"  # Ajusta según los requisitos de tu VM
 BRIDGE="vmbr0"
 
