@@ -32,14 +32,14 @@ select opt in "${options[@]}"
 do
     case $opt in
         "TrueNAS CORE 13.0-U6.1")
-            OS_NAME="TrueNAS CORE"
+            OS_NAME="truenas-core-130"
             OS_VERSION="13.0-U6.1"
             ISO_FILE="TrueNAS-13.0-U6.1.iso"
             ISO_URL="https://download-core.sys.truenas.net/13.0/STABLE/U6.1/x64/${ISO_FILE}"
             break
             ;;
         "TrueNAS SCALE 24.04.1.1")
-            OS_NAME="TrueNAS SCALE"
+            OS_NAME="truenas-scale-2404"
             OS_VERSION="24.04.1.1"
             ISO_FILE="TrueNAS-SCALE-24.04.1.1.iso"
             ISO_URL="https://download.sys.truenas.net/TrueNAS-SCALE-Dragonfish/24.04.1.1/${ISO_FILE}"
@@ -55,10 +55,10 @@ done
 
 # Variables generales
 ISO_PATH="/var/lib/vz/template/iso/${ISO_FILE}"
-VM_NAME="${OS_NAME}"
+VM_NAME="${OS_NAME//./-}"  # Reemplazar puntos con guiones para nombres válidos
 STORAGE="local"
-MEMORY="8192"  # Ajusta según los requisitos de tu VM
-DISK_SIZE="20G"  # Ajusta según los requisitos de tu VM
+MEMORY="1024"  # Ajusta según los requisitos de tu VM
+DISK_SIZE="50G"  # Ajusta según los requisitos de tu VM
 BRIDGE="vmbr0"
 
 # Function to get the next available VM ID
@@ -104,6 +104,7 @@ if ! sudo mount -o loop $ISO_PATH /mnt; then
     echo "Failed to mount the ISO file. Aborting."
     exit 1
 fi
+sudo umount /mnt
 
 # Variables for VM creation
 DISK_PATH="/var/lib/vz/images/$VM_ID/vm-$VM_ID-disk-0.raw"
@@ -131,30 +132,45 @@ fi
 
 # Create a new VM in Proxmox
 echo "Creating a new VM in Proxmox..."
-qm create $VM_ID --name "$VM_NAME" --memory "$MEMORY" --net0 virtio,bridge="$BRIDGE" --ostype l26 --scsihw virtio-scsi-pci
+if ! qm create $VM_ID --name "$VM_NAME" --memory "$MEMORY" --net0 virtio,bridge="$BRIDGE" --ostype l26 --scsihw virtio-scsi-pci; then
+    echo "Failed to create the VM. Aborting."
+    exit 1
+fi
 
 # Attach the disk to the VM
 echo "Attaching the disk to the VM..."
-qm set $VM_ID --scsi0 "$STORAGE:$VM_ID/vm-$VM_ID-disk-0.raw,size=$DISK_SIZE"
+if ! qm set $VM_ID --scsi0 "$STORAGE:$VM_ID/vm-$VM_ID-disk-0.raw,size=$DISK_SIZE"; then
+    echo "Failed to attach the disk. Aborting."
+    exit 1
+fi
 
 # Verify the creation and attachment of the disk
 if qm config $VM_ID | grep -q "scsi0"; then
     echo "Disk attached successfully."
 else
-    echo "Failed to attach the disk."
+    echo "Failed to attach the disk. Aborting."
     exit 1
 fi
 
 # Set the CD-ROM
 echo "Setting the CD-ROM..."
-qm set $VM_ID --ide2 "$STORAGE:iso/${ISO_FILE},media=cdrom"
+if ! qm set $VM_ID --ide2 "$STORAGE:iso/${ISO_FILE},media=cdrom"; then
+    echo "Failed to set the CD-ROM. Aborting."
+    exit 1
+fi
 
 # Set the boot order to prioritize CD-ROM first
 echo "Setting boot order..."
-qm set $VM_ID --boot order=ide2
+if ! qm set $VM_ID --boot order=ide2; then
+    echo "Failed to set the boot order. Aborting."
+    exit 1
+fi
 
 # Start the VM
 echo "Starting the VM..."
-qm start $VM_ID
+if ! qm start $VM_ID; then
+    echo "Failed to start the VM. Aborting."
+    exit 1
+fi
 
 echo "${OS_NAME} VM created and started successfully."
