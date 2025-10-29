@@ -28,7 +28,7 @@ rm -rf /var/lib/vz/template/iso/*
 # Variables
 # Menu de selección de versión de Ubuntu
 echo "Selecciona la versión de Ubuntu que deseas instalar:"
-options=("Ubuntu 18.04.6" "Ubuntu 20.04.6" "Ubuntu 22.04.2" "Ubuntu 22.10" "Ubuntu 23.04" "Salir")
+options=("Ubuntu 18.04.6" "Ubuntu 20.04.6" "Ubuntu 22.04.2" "Ubuntu 22.10" "Ubuntu 23.04" "Ubuntu 24.04.3" "Ubuntu 25.04" "Ubuntu 25.10" "Salir")
 select opt in "${options[@]}"
 do
     case $opt in
@@ -58,6 +58,24 @@ do
             ;;
         "Ubuntu 23.04")
             UBUNTU_VERSION="23.04"
+            ISO_FILE="ubuntu-${UBUNTU_VERSION}-live-server-amd64.iso"
+            ISO_URL="https://releases.ubuntu.com/${UBUNTU_VERSION}/${ISO_FILE}"
+            break
+            ;;
+        "Ubuntu 24.04.3")
+            UBUNTU_VERSION="24.04.3"
+            ISO_FILE="ubuntu-${UBUNTU_VERSION}-live-server-amd64.iso"
+            ISO_URL="https://releases.ubuntu.com/${UBUNTU_VERSION}/${ISO_FILE}"
+            break
+            ;;
+        "Ubuntu 25.04")
+            UBUNTU_VERSION="25.04"
+            ISO_FILE="ubuntu-${UBUNTU_VERSION}-live-server-amd64.iso"
+           ISO_URL="https://releases.ubuntu.com/${UBUNTU_VERSION}/${ISO_FILE}"
+            break
+            ;;
+        "Ubuntu 25.10")
+            UBUNTU_VERSION="25.10"
             ISO_FILE="ubuntu-${UBUNTU_VERSION}-live-server-amd64.iso"
             ISO_URL="https://releases.ubuntu.com/${UBUNTU_VERSION}/${ISO_FILE}"
             break
