@@ -25,7 +25,7 @@ rm -rf /var/lib/vz/template/iso/*
 
 # Menu de selección de versión de Debian o Windows
 echo "Selecciona la versión de sistema operativo que deseas instalar:"
-options=("Windows Server 2016" "Windows Server 2019" "Windows Server 2022" "Salir")
+options=("Windows Server 2016" "Windows Server 2019" "Windows Server 2022" "Windows Server 2025" "Salir")
 select opt in "${options[@]}"
 do
     case $opt in
@@ -42,6 +42,11 @@ do
         "Windows Server 2022")
             ISO_FILE="windows-server-2022.iso"
             ISO_URL="https://go.microsoft.com/fwlink/p/?LinkID=2195280&clcid=0x40a&culture=es-es&country=ES"
+            break
+            ;;
+        "Windows Server 2025")
+            ISO_FILE="windows-server-2025.iso"
+            ISO_URL="https://go.microsoft.com/fwlink/?linkid=2293312&clcid=0x40a&culture=es-es&country=ES"
             break
             ;;
         "Salir")
