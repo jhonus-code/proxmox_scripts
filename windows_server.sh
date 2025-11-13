@@ -6,6 +6,7 @@
 
 #ASCI Nombre https://www.freetool.dev/es/generador-de-letras-ascii ANSI REGULAR
 
+#!/bin/bash
 # Creador de VM Windows (11/2022/2025) en Proxmox PVE 9.x, totalmente interactivo
 # - BIOS: OVMF (UEFI), Machine: q35
 # - SCSI Controller: virtio-scsi-pci
@@ -61,7 +62,7 @@ ask_default() {
   echo "${var:-$default}"
 }
 
-# Devuelve storages cuyo bloque en /etc/pve/storage.cfg contiene el tipo de contenido pedido
+# Devuelve storages que anuncian el tipo de contenido pedido en /etc/pve/storage.cfg
 storages_with_content() {
   local want="$1"
   [[ -f /etc/pve/storage.cfg ]] || return 0
@@ -69,7 +70,7 @@ storages_with_content() {
     {
       name=""; content=""
       for(i=1;i<=NF;i++){
-        if($i ~ /^[a-zA-Z0-9_]+: +.*/){
+        if($i ~ /^[a-zA-Z0-9_-]+: +.*/){
           name=$i; sub(/^[^:]+: +/, "", name)
         }
         if($i ~ /^[[:space:]]*content[[:space:]]+/){
@@ -83,11 +84,9 @@ storages_with_content() {
 
 detect_bridges() {
   local -a br=()
-  # 1) /etc/network/interfaces
   if [[ -f /etc/network/interfaces ]]; then
     mapfile -t br < <(grep -oE '^\s*auto\s+(vmbr[0-9A-Za-z_-]+)' /etc/network/interfaces | awk '{print $2}' | sort -u)
   fi
-  # 2) /sys/class/net
   if [[ ${#br[@]} -eq 0 ]]; then
     mapfile -t br < <(ls -1 /sys/class/net 2>/dev/null | grep -E '^vmbr|^br' || true)
   fi
@@ -101,7 +100,6 @@ next_vmid() {
   if command -v pvesh >/dev/null 2>&1; then
     pvesh get /cluster/nextid
   else
-    # Fallback
     local last=100
     for d in /var/lib/vz/images/*; do
       [[ -d "$d" ]] || continue
@@ -125,25 +123,39 @@ verify_iso_mount() {
   return 1
 }
 
+# ===== 0) Variables a prueba de set -u =====
+ISO_MS=""   # <- IMPORTANTE: inicializar antes de usar
+
 # ===== 1) Elegir versión de Windows =====
 echo "Versión de Windows:"
 WIN_VER="$(choose_from_list "Elige:" "Windows 11" "Windows Server 2022" "Windows Server 2025")"
 case "$WIN_VER" in
-  "Windows 11")          OSTYPE_ARG="win11"; DEF_ISO_FILE="Windows11.iso"; ISO_MS="" ;;
-  "Windows Server 2022") OSTYPE_ARG="win11"; DEF_ISO_FILE="windows-server-2022.iso"; ISO_MS="https://go.microsoft.com/fwlink/p/?LinkID=2195280&clcid=0x40a&culture=es-es&country=ES" ;;
-  "Windows Server 2025") OSTYPE_ARG="win11"; DEF_ISO_FILE="windows-server-2025.iso"; ISO_MS="https://go.microsoft.com/fwlink/?linkid=2293312&clcid=0x40a&culture=es-es&country=ES" ;;
+  "Windows 11")
+    OSTYPE_ARG="win11"
+    DEF_ISO_FILE="Windows11.iso"
+    ISO_MS=""  # no tenemos enlace directo oficial genérico
+    ;;
+  "Windows Server 2022")
+    OSTYPE_ARG="win11"
+    DEF_ISO_FILE="windows-server-2022.iso"
+    ISO_MS="https://go.microsoft.com/fwlink/p/?LinkID=2195280&clcid=0x40a&culture=es-es&country=ES"
+    ;;
+  "Windows Server 2025")
+    OSTYPE_ARG="win11"
+    DEF_ISO_FILE="windows-server-2025.iso"
+    ISO_MS="https://go.microsoft.com/fwlink/?linkid=2293312&clcid=0x40a&culture=es-es&country=ES"
+    ;;
 esac
 
 # ===== 2) Elegir cómo obtener la ISO =====
-# Busca ISOs locales
 mapfile -t LOCAL_ISOS < <(find "$ISO_DIR" -maxdepth 1 -type f -iname "*.iso" -printf "%f\n" | sort -u)
 ISO_MODE=""
-if [[ ${#LOCAL_ISOS[@]} -gt 0 && -n "$ISO_MS" ]]; then
+if [[ ${#LOCAL_ISOS[@]} -gt 0 && -n "${ISO_MS:-}" ]]; then
   ISO_MODE="$(choose_from_list "ISO: Elige una opción" "Usar ISO local" "Descargar desde Microsoft" "Pegar URL personalizada")"
 elif [[ ${#LOCAL_ISOS[@]} -gt 0 ]]; then
   ISO_MODE="$(choose_from_list "ISO: Elige una opción" "Usar ISO local" "Pegar URL personalizada")"
 else
-  if [[ -n "$ISO_MS" ]]; then
+  if [[ -n "${ISO_MS:-}" ]]; then
     ISO_MODE="$(choose_from_list "No hay ISOs locales. Elige:" "Descargar desde Microsoft" "Pegar URL personalizada")"
   else
     ISO_MODE="$(choose_from_list "No hay ISOs locales. Elige:" "Pegar URL personalizada")"
@@ -151,7 +163,7 @@ else
 fi
 
 ISO_FILE=""
-case "$ISO_MODE" in
+case "${ISO_MODE:-}" in
   "Usar ISO local")
     ISO_FILE="$(choose_from_list "Elige ISO local en $ISO_DIR:" "${LOCAL_ISOS[@]}")"
     ;;
@@ -160,14 +172,7 @@ case "$ISO_MODE" in
     echo "Descargando ISO oficial de Microsoft para $WIN_VER ..."
     wget -L -O "$ISO_DIR/$ISO_FILE" "$ISO_MS"
     ;;
-  "Pegar URL personalizada")
-    read -rp "Pega la URL de la ISO: " CUSTOM_URL
-    ISO_FILE="$(ask_default "Nombre destino del archivo" "$DEF_ISO_FILE")"
-    echo "Descargando $CUSTOM_URL ..."
-    wget -L -O "$ISO_DIR/$ISO_FILE" "$CUSTOM_URL"
-    ;;
-  *)
-    # Solo había opción de URL personalizada
+  "Pegar URL personalizada"|"")
     read -rp "Pega la URL de la ISO: " CUSTOM_URL
     ISO_FILE="$(ask_default "Nombre destino del archivo" "$DEF_ISO_FILE")"
     echo "Descargando $CUSTOM_URL ..."
@@ -184,25 +189,19 @@ echo "Detectando storages..."
 mapfile -t IMG_STOR < <(storages_with_content "images")
 mapfile -t ISO_STOR < <(storages_with_content "iso")
 
-# Storage para DISCO (images)
 if [[ ${#IMG_STOR[@]} -eq 0 ]]; then
   echo "No se detectaron storages con 'images' en /etc/pve/storage.cfg"
-  echo "Puedes crear uno (local-lvm, etc.) y volver a ejecutar."
   exit 1
 fi
+
 DISK_STORAGE="$(choose_from_list "Elige storage para el DISCO (images):" "${IMG_STOR[@]}")"
-
-# Storage para EFI (images)
 EFI_STORAGE="$(choose_from_list "Elige storage para el EFI Disk (images):" "${IMG_STOR[@]}")"
-
-# Storage para TPM (images)
 TPM_STORAGE="$(choose_from_list "Elige storage para el TPM State (images):" "${IMG_STOR[@]}")"
 
-# Storage para ISO (iso)
 if [[ ${#ISO_STOR[@]} -gt 0 ]]; then
   ISO_STORAGE="$(choose_from_list "Elige storage para la ISO (iso):" "${ISO_STOR[@]}")"
 else
-  echo "No hay storages con 'iso' declarados. Se usará 'local' (ruta $ISO_DIR) si existe."
+  echo "No hay storages con 'iso' declarados. Se usará 'local'."
   ISO_STORAGE="local"
 fi
 
@@ -237,7 +236,7 @@ qm create "$VMID" \
 # Disco SCSI
 qm set "$VMID" --scsi0 "$DISK_STORAGE:$DISK_SIZE"
 
-# EFI Disk (con claves preinstaladas para Secure Boot)
+# EFI Disk (Secure Boot keys)
 qm set "$VMID" --efidisk0 "$EFI_STORAGE:0,efitype=4m,pre-enrolled-keys=1"
 
 # TPM 2.0
@@ -253,14 +252,12 @@ qm set "$VMID" --boot order=ide2;scsi0
 echo
 read -rp "¿Adjuntar también ISO de drivers virtio-win (recomendado para Windows Server/11)? [s/N]: " ADD_VIRTIO
 if [[ "${ADD_VIRTIO,,}" == "s" || "${ADD_VIRTIO,,}" == "si" ]]; then
-  # Busca virtio-win en carpeta ISO
   mapfile -t VIRTIO_CAND < <(find "$ISO_DIR" -maxdepth 1 -type f -iname "virtio-win*.iso" -printf "%f\n" | sort -u)
   if [[ ${#VIRTIO_CAND[@]} -gt 0 ]]; then
     VIRTIO_ISO="$(choose_from_list "Elige ISO de virtio-win:" "${VIRTIO_CAND[@]}")"
-    # Lo conectamos como segundo CD (ide3)
     qm set "$VMID" --ide3 "$ISO_STORAGE:iso/$VIRTIO_ISO,media=cdrom"
   else
-    echo "No se encontró virtio-win*.iso en $ISO_DIR. Puedes descargarlo desde Fedora (virtio-win)."
+    echo "No se encontró virtio-win*.iso en $ISO_DIR. Descárgalo desde Fedora (virtio-win) si lo necesitas."
   fi
 fi
 
@@ -283,4 +280,5 @@ echo "  ISO:         $ISO_STORAGE:iso/$ISO_FILE"
 echo "  Red:         $NETMODEL on $BRIDGE"
 echo
 echo "Comprueba config con:  qm config $VMID"
+
 
