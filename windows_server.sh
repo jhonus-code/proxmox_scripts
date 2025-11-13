@@ -5,7 +5,18 @@
 # https://github.com/magoblanco66/proxmox_scripts/raw/main/LICENSE
 
 #ASCI Nombre https://www.freetool.dev/es/generador-de-letras-ascii ANSI REGULAR
-function header_info {
+
+# Creador de VM Windows (11/2022/2025) en Proxmox PVE 9.x, totalmente interactivo
+# - BIOS: OVMF (UEFI), Machine: q35
+# - SCSI Controller: virtio-scsi-pci
+# - Qemu Agent: ON
+# - TPM 2.0 y EFI Disk en storages a elegir
+# - ISO existente o descarga por URL (incluye links de MS para Server 2022/2025)
+
+set -Eeuo pipefail
+
+# ===== Cabecera =====
+header() {
   clear
   cat <<"EOF"
 ██     ██ ██ ███    ██ ██████   ██████  ██     ██ ███████     ███████ ███████ ██████  ██    ██ ███████ ██████  
@@ -13,153 +24,263 @@ function header_info {
 ██  █  ██ ██ ██ ██  ██ ██   ██ ██    ██ ██  █  ██ ███████     ███████ █████   ██████  ██    ██ █████   ██████  
 ██ ███ ██ ██ ██  ██ ██ ██   ██ ██    ██ ██ ███ ██      ██          ██ ██      ██   ██  ██  ██  ██      ██   ██ 
  ███ ███  ██ ██   ████ ██████   ██████   ███ ███  ███████     ███████ ███████ ██   ██   ████   ███████ ██   ██ 
-                                                                                                                                       
 EOF
+  echo
 }
-header_info
-echo -e "\n Cargando..."
+header
 
-# Clear the contents of the ISO directory
-echo "Clearing contents of /var/lib/vz/template/iso/..."
-rm -rf /var/lib/vz/template/iso/*
+# ===== Comprobaciones =====
+[[ $EUID -eq 0 ]] || { echo "Ejecuta como root."; exit 1; }
+command -v qm >/dev/null || { echo "No se encuentra 'qm' (Proxmox)."; exit 1; }
+command -v wget >/dev/null || { echo "No se encuentra 'wget'."; exit 1; }
+command -v file >/dev/null || { echo "No se encuentra 'file'. Instala: apt-get update && apt-get install -y file"; exit 1; }
 
-# Menu de selección de versión de Debian o Windows
-echo "Selecciona la versión de sistema operativo que deseas instalar:"
-options=("Windows Server 2016" "Windows Server 2019" "Windows Server 2022" "Windows Server 2025" "Salir")
-select opt in "${options[@]}"
-do
-    case $opt in
-        "Windows Server 2016")
-            ISO_FILE="windows-server-2016.iso"
-            ISO_URL="https://go.microsoft.com/fwlink/p/?LinkID=2195174&clcid=0x40a&culture=es-es&country=ES"
-            break
-            ;;
-        "Windows Server 2019")
-            ISO_FILE="windows-server-2019.iso"
-            ISO_URL="https://go.microsoft.com/fwlink/p/?LinkID=2195167&clcid=0x40a&culture=es-es&country=ES"
-            break
-            ;;
-        "Windows Server 2022")
-            ISO_FILE="windows-server-2022.iso"
-            ISO_URL="https://go.microsoft.com/fwlink/p/?LinkID=2195280&clcid=0x40a&culture=es-es&country=ES"
-            break
-            ;;
-        "Windows Server 2025")
-            ISO_FILE="windows-server-2025.iso"
-            ISO_URL="https://go.microsoft.com/fwlink/?linkid=2293312&clcid=0x40a&culture=es-es&country=ES"
-            break
-            ;;
-        "Salir")
-            echo "Saliendo..."
-            exit 0
-            ;;
-        *) echo "Opción inválida $REPLY";;
-    esac
-done
+ISO_DIR="/var/lib/vz/template/iso"
+mkdir -p "$ISO_DIR"
 
-ISO_PATH="/var/lib/vz/template/iso/${ISO_FILE}"
-VM_NAME="Server"
-STORAGE="local"
-MEMORY="4096"  # Ajusta según los requisitos de tu VM
-DISK_SIZE="60G"  # Ajusta según los requisitos de tu VM
-BRIDGE="vmbr0"
+# ===== Utilidades =====
+pause(){ read -rp "Pulsa ENTER para continuar..."; }
 
-# Function to get the next available VM ID
-get_next_vm_id() {
-    local last_id=99  # Establecer el número base para la búsqueda
-    for dir in /var/lib/vz/images/*/; do
-        dir=${dir%/}  # Eliminar la barra al final
-        vm_id=${dir##*/}  # Obtener el número de VM del directorio
-        if [[ $vm_id =~ ^[0-9]+$ ]]; then
-            if [ $vm_id -gt $last_id ]; then
-                last_id=$vm_id
-            fi
-        fi
-    done
-    echo $((last_id + 1))  # Devolver el próximo número disponible
-}
-
-# Determine the next available VM ID
-VM_ID=$(get_next_vm_id)
-
-# Function to download the ISO
-download_iso() {
-    local url=$1
-    local output=$2
-    echo "Attempting to download ISO from $url..."
-    wget $url -O $output
-    return $?
-}
-
-# Download the ISO if it doesn't exist
-if [ ! -f $ISO_PATH ]; then
-    download_iso $ISO_URL $ISO_PATH
-    if [ $? -ne 0 ]; then
-        echo "Failed to download the ISO from $ISO_URL. Aborting."
-        exit 1
+choose_from_list() {
+  local prompt="$1"; shift
+  local -a items=( "$@" )
+  local choice=
+  echo "$prompt"
+  select choice in "${items[@]}"; do
+    if [[ -n "${choice:-}" ]]; then
+      echo "$choice"
+      return 0
     fi
+    echo "Opción inválida."
+  done
+}
+
+ask_default() {
+  local prompt="$1" default="$2" var
+  read -rp "$prompt [$default]: " var
+  echo "${var:-$default}"
+}
+
+# Devuelve storages cuyo bloque en /etc/pve/storage.cfg contiene el tipo de contenido pedido
+storages_with_content() {
+  local want="$1"
+  [[ -f /etc/pve/storage.cfg ]] || return 0
+  awk -v RS="" -v FS="\n" -v want="$want" '
+    {
+      name=""; content=""
+      for(i=1;i<=NF;i++){
+        if($i ~ /^[a-zA-Z0-9_]+: +.*/){
+          name=$i; sub(/^[^:]+: +/, "", name)
+        }
+        if($i ~ /^[[:space:]]*content[[:space:]]+/){
+          content=$i; sub(/^[[:space:]]*content[[:space:]]+/, "", content)
+        }
+      }
+      if(name != "" && index(content, want)) print name
+    }
+  ' /etc/pve/storage.cfg | sort -u
+}
+
+detect_bridges() {
+  local -a br=()
+  # 1) /etc/network/interfaces
+  if [[ -f /etc/network/interfaces ]]; then
+    mapfile -t br < <(grep -oE '^\s*auto\s+(vmbr[0-9A-Za-z_-]+)' /etc/network/interfaces | awk '{print $2}' | sort -u)
+  fi
+  # 2) /sys/class/net
+  if [[ ${#br[@]} -eq 0 ]]; then
+    mapfile -t br < <(ls -1 /sys/class/net 2>/dev/null | grep -E '^vmbr|^br' || true)
+  fi
+  if [[ ${#br[@]} -eq 0 ]]; then
+    br=( "vmbr0" )
+  fi
+  printf "%s\n" "${br[@]}"
+}
+
+next_vmid() {
+  if command -v pvesh >/dev/null 2>&1; then
+    pvesh get /cluster/nextid
+  else
+    # Fallback
+    local last=100
+    for d in /var/lib/vz/images/*; do
+      [[ -d "$d" ]] || continue
+      base="${d##*/}"
+      [[ "$base" =~ ^[0-9]+$ ]] && (( base > last )) && last="$base"
+    done
+    echo $((last+1))
+  fi
+}
+
+verify_iso_mount() {
+  local iso="$1"
+  local mnt; mnt="$(mktemp -d)"
+  trap 'umount -f "$mnt" >/dev/null 2>&1 || true; rmdir "$mnt" >/dev/null 2>&1 || true' RETURN
+  if mount -o loop,ro -t udf,iso9660 "$iso" "$mnt" 2>/dev/null; then
+    umount "$mnt"
+    return 0
+  fi
+  echo "No se pudo montar el ISO (¿HTML en lugar de ISO?)."
+  file "$iso" || true
+  return 1
+}
+
+# ===== 1) Elegir versión de Windows =====
+echo "Versión de Windows:"
+WIN_VER="$(choose_from_list "Elige:" "Windows 11" "Windows Server 2022" "Windows Server 2025")"
+case "$WIN_VER" in
+  "Windows 11")          OSTYPE_ARG="win11"; DEF_ISO_FILE="Windows11.iso"; ISO_MS="" ;;
+  "Windows Server 2022") OSTYPE_ARG="win11"; DEF_ISO_FILE="windows-server-2022.iso"; ISO_MS="https://go.microsoft.com/fwlink/p/?LinkID=2195280&clcid=0x40a&culture=es-es&country=ES" ;;
+  "Windows Server 2025") OSTYPE_ARG="win11"; DEF_ISO_FILE="windows-server-2025.iso"; ISO_MS="https://go.microsoft.com/fwlink/?linkid=2293312&clcid=0x40a&culture=es-es&country=ES" ;;
+esac
+
+# ===== 2) Elegir cómo obtener la ISO =====
+# Busca ISOs locales
+mapfile -t LOCAL_ISOS < <(find "$ISO_DIR" -maxdepth 1 -type f -iname "*.iso" -printf "%f\n" | sort -u)
+ISO_MODE=""
+if [[ ${#LOCAL_ISOS[@]} -gt 0 && -n "$ISO_MS" ]]; then
+  ISO_MODE="$(choose_from_list "ISO: Elige una opción" "Usar ISO local" "Descargar desde Microsoft" "Pegar URL personalizada")"
+elif [[ ${#LOCAL_ISOS[@]} -gt 0 ]]; then
+  ISO_MODE="$(choose_from_list "ISO: Elige una opción" "Usar ISO local" "Pegar URL personalizada")"
 else
-    echo "The ISO file $ISO_FILE already exists. Skipping download."
+  if [[ -n "$ISO_MS" ]]; then
+    ISO_MODE="$(choose_from_list "No hay ISOs locales. Elige:" "Descargar desde Microsoft" "Pegar URL personalizada")"
+  else
+    ISO_MODE="$(choose_from_list "No hay ISOs locales. Elige:" "Pegar URL personalizada")"
+  fi
 fi
 
-# Verify the ISO integrity
-echo "Verifying the integrity of the ISO..."
-if ! sudo mount -o loop $ISO_PATH /mnt; then
-    echo "Failed to mount the ISO file. Aborting."
-    exit 1
+ISO_FILE=""
+case "$ISO_MODE" in
+  "Usar ISO local")
+    ISO_FILE="$(choose_from_list "Elige ISO local en $ISO_DIR:" "${LOCAL_ISOS[@]}")"
+    ;;
+  "Descargar desde Microsoft")
+    ISO_FILE="$DEF_ISO_FILE"
+    echo "Descargando ISO oficial de Microsoft para $WIN_VER ..."
+    wget -L -O "$ISO_DIR/$ISO_FILE" "$ISO_MS"
+    ;;
+  "Pegar URL personalizada")
+    read -rp "Pega la URL de la ISO: " CUSTOM_URL
+    ISO_FILE="$(ask_default "Nombre destino del archivo" "$DEF_ISO_FILE")"
+    echo "Descargando $CUSTOM_URL ..."
+    wget -L -O "$ISO_DIR/$ISO_FILE" "$CUSTOM_URL"
+    ;;
+  *)
+    # Solo había opción de URL personalizada
+    read -rp "Pega la URL de la ISO: " CUSTOM_URL
+    ISO_FILE="$(ask_default "Nombre destino del archivo" "$DEF_ISO_FILE")"
+    echo "Descargando $CUSTOM_URL ..."
+    wget -L -O "$ISO_DIR/$ISO_FILE" "$CUSTOM_URL"
+    ;;
+esac
+
+[[ -s "$ISO_DIR/$ISO_FILE" ]] || { echo "ISO no encontrada o vacía: $ISO_DIR/$ISO_FILE"; exit 1; }
+verify_iso_mount "$ISO_DIR/$ISO_FILE" || { echo "El archivo no parece ser un ISO válido. Abortando."; exit 1; }
+
+# ===== 3) Elegir storages =====
+echo
+echo "Detectando storages..."
+mapfile -t IMG_STOR < <(storages_with_content "images")
+mapfile -t ISO_STOR < <(storages_with_content "iso")
+
+# Storage para DISCO (images)
+if [[ ${#IMG_STOR[@]} -eq 0 ]]; then
+  echo "No se detectaron storages con 'images' en /etc/pve/storage.cfg"
+  echo "Puedes crear uno (local-lvm, etc.) y volver a ejecutar."
+  exit 1
 fi
-sudo umount /mnt
+DISK_STORAGE="$(choose_from_list "Elige storage para el DISCO (images):" "${IMG_STOR[@]}")"
 
-# Variables for VM creation
-DISK_PATH="/var/lib/vz/images/$VM_ID/vm-$VM_ID-disk-0.raw"
+# Storage para EFI (images)
+EFI_STORAGE="$(choose_from_list "Elige storage para el EFI Disk (images):" "${IMG_STOR[@]}")"
 
-# Create the VM directory if it doesn't exist
-if [ ! -d "/var/lib/vz/images/$VM_ID" ]; then
-    mkdir -p "/var/lib/vz/images/$VM_ID"
-fi
+# Storage para TPM (images)
+TPM_STORAGE="$(choose_from_list "Elige storage para el TPM State (images):" "${IMG_STOR[@]}")"
 
-# Create the disk file if it doesn't exist
-if [ ! -f "$DISK_PATH" ]; then
-    echo "Creating the disk file..."
-    qemu-img create -f raw "$DISK_PATH" "$DISK_SIZE"
+# Storage para ISO (iso)
+if [[ ${#ISO_STOR[@]} -gt 0 ]]; then
+  ISO_STORAGE="$(choose_from_list "Elige storage para la ISO (iso):" "${ISO_STOR[@]}")"
 else
-    echo "The disk file already exists."
+  echo "No hay storages con 'iso' declarados. Se usará 'local' (ruta $ISO_DIR) si existe."
+  ISO_STORAGE="local"
 fi
 
-# Verify the creation of the disk file
-if [ -f "$DISK_PATH" ]; then
-    echo "Disk file created successfully."
-else
-    echo "Failed to create the disk file."
-    exit 1
+# ===== 4) Red: bridge y modelo =====
+mapfile -t BRIDGES < <(detect_bridges)
+BRIDGE="$(choose_from_list "Elige bridge de red:" "${BRIDGES[@]}")"
+NETMODEL="$(choose_from_list "Modelo de NIC:" "virtio" "e1000" "rtl8139")"
+
+# ===== 5) Parámetros de VM =====
+VM_NAME="$(ask_default 'Nombre de la VM' 'Win-Guest')"
+VMID="$(ask_default 'VMID (vacío para automático)' "$(next_vmid)")"
+MEMORY="$(ask_default 'Memoria RAM (MiB)' '4096')"
+CORES="$(ask_default 'Cores' '2')"
+SOCKETS="$(ask_default 'Sockets' '1')"
+DISK_SIZE="$(ask_default 'Tamaño de DISCO (ej: 60G)' '60G')"
+
+# ===== 6) Crear VM =====
+echo
+echo "Creando VM $VMID ($VM_NAME)..."
+qm create "$VMID" \
+  --name "$VM_NAME" \
+  --memory "$MEMORY" \
+  --cores "$CORES" --sockets "$SOCKETS" \
+  --cpu host \
+  --ostype "$OSTYPE_ARG" \
+  --net0 "$NETMODEL,bridge=$BRIDGE" \
+  --machine q35 \
+  --bios ovmf \
+  --scsihw virtio-scsi-pci \
+  --agent 1
+
+# Disco SCSI
+qm set "$VMID" --scsi0 "$DISK_STORAGE:$DISK_SIZE"
+
+# EFI Disk (con claves preinstaladas para Secure Boot)
+qm set "$VMID" --efidisk0 "$EFI_STORAGE:0,efitype=4m,pre-enrolled-keys=1"
+
+# TPM 2.0
+qm set "$VMID" --tpmstate0 "$TPM_STORAGE:0,version=v2.0"
+
+# CD-ROM (ISO elegida)
+qm set "$VMID" --cdrom "$ISO_STORAGE:iso/$ISO_FILE"
+
+# Arranque: CD primero, luego disco
+qm set "$VMID" --boot order=ide2;scsi0
+
+# ===== 7) (Opcional) Adjuntar virtio-win drivers =====
+echo
+read -rp "¿Adjuntar también ISO de drivers virtio-win (recomendado para Windows Server/11)? [s/N]: " ADD_VIRTIO
+if [[ "${ADD_VIRTIO,,}" == "s" || "${ADD_VIRTIO,,}" == "si" ]]; then
+  # Busca virtio-win en carpeta ISO
+  mapfile -t VIRTIO_CAND < <(find "$ISO_DIR" -maxdepth 1 -type f -iname "virtio-win*.iso" -printf "%f\n" | sort -u)
+  if [[ ${#VIRTIO_CAND[@]} -gt 0 ]]; then
+    VIRTIO_ISO="$(choose_from_list "Elige ISO de virtio-win:" "${VIRTIO_CAND[@]}")"
+    # Lo conectamos como segundo CD (ide3)
+    qm set "$VMID" --ide3 "$ISO_STORAGE:iso/$VIRTIO_ISO,media=cdrom"
+  else
+    echo "No se encontró virtio-win*.iso en $ISO_DIR. Puedes descargarlo desde Fedora (virtio-win)."
+  fi
 fi
 
-# Create a new VM in Proxmox
-echo "Creating a new VM in Proxmox..."
-qm create $VM_ID --name "$VM_NAME" --memory "$MEMORY" --net0 e1000,bridge="$BRIDGE" --ostype win10 --scsihw virtio-scsi-pci
+# ===== 8) Arranque =====
+echo
+echo "Iniciando VM..."
+qm start "$VMID"
 
-# Attach the disk to the VM
-echo "Attaching the disk to the VM..."
-qm set $VM_ID --sata0 "$STORAGE:$VM_ID/vm-$VM_ID-disk-0.raw,size=$DISK_SIZE"
+echo
+echo "✔ VM creada e iniciada."
+echo "Resumen:"
+echo "  VMID:        $VMID"
+echo "  Nombre:      $VM_NAME"
+echo "  Windows:     $WIN_VER  (ostype=$OSTYPE_ARG)"
+echo "  BIOS:        OVMF (UEFI)  | Machine: q35"
+echo "  Controlador: VirtIO SCSI  | Disco: scsi0 = $DISK_STORAGE:$DISK_SIZE"
+echo "  EFI Disk:    $EFI_STORAGE (pre-enrolled-keys=1)"
+echo "  TPM:         $TPM_STORAGE (v2.0)"
+echo "  ISO:         $ISO_STORAGE:iso/$ISO_FILE"
+echo "  Red:         $NETMODEL on $BRIDGE"
+echo
+echo "Comprueba config con:  qm config $VMID"
 
-# Verify the creation and attachment of the disk
-if qm config $VM_ID | grep -q "sata0"; then
-    echo "Disk attached successfully."
-else
-    echo "Failed to attach the disk."
-    exit 1
-fi
-
-# Set the CD-ROM
-echo "Setting the CD-ROM..."
-qm set $VM_ID --ide2 "$STORAGE:iso/${ISO_FILE},media=cdrom"
-
-# Set the boot order to prioritize CD-ROM first
-echo "Setting boot order..."
-qm set $VM_ID --boot order=ide2
-
-# Start the VM
-echo "Starting the VM..."
-qm start $VM_ID
-
-echo "Windows Server VM created and started successfully."
